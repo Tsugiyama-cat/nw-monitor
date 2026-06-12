@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nw-monitor 設定</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; background: #f5f6f8; color: #222; }
+  h1 { font-size: 1.3rem; }
+  .card { background: #fff; border-radius: 8px; padding: 1.2rem; margin-bottom: 1.2rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  label { display: block; font-size: .82rem; color: #555; margin-top: .8rem; }
+  input { width: 100%; padding: .45rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: .9rem; }
+  button { margin-top: 1rem; padding: .55rem 1.4rem; background: #0a6cff; color: #fff; border: none; border-radius: 5px; font-size: .95rem; cursor: pointer; }
+  button:hover { background: #085ad4; }
+  .ok { color: #1a7f37; } .alert { color: #c62828; font-weight: bold; } .skipped { color: #999; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  td, th { padding: .35rem .5rem; border-bottom: 1px solid #eee; text-align: left; }
+  #saveMsg { margin-left: .8rem; font-size: .85rem; color: #1a7f37; }
+  .note { font-size: .78rem; color: #888; }
+</style>
+</head>
+<body>
+<h1>nw-monitor 設定・状態</h1>
+
+<div class="card">
+  <h2 style="font-size:1.05rem">監視状態</h2>
+  <div id="statusArea">読み込み中…</div>
+  <h3 style="font-size:.95rem">直近の異常 (最新20件)</h3>
+  <div id="anomalyArea">—</div>
+</div>
+
+<div class="card">
+  <h2 style="font-size:1.05rem">APIトークン / 設定</h2>
+  <p class="note">シークレットは保存後マスク表示されます。マスクのまま保存すれば既存値が維持されます。<br>
+  Central MCPコンテナへの反映には <code>docker compose restart central-mcp</code> が必要です（ポーラーとGUIは即時反映）。</p>
+  <form id="cfgForm"></form>
+  <button onclick="saveConfig()">保存</button><span id="saveMsg"></span>
+</div>
+
+<script>
+async function loadAll() {
+  const fields = await (await fetch('/api/fields')).json();
+  const cfg = await (await fetch('/api/config')).json();
+  const form = document.getElementById('cfgForm');
+  form.innerHTML = fields.map(f => `
+    <label>${f.label}
+      <input name="${f.key}" type="${f.secret ? 'password' : 'text'}"
+             value="${cfg[f.key] ?? ''}" autocomplete="off">
+    </label>`).join('');
+  await loadStatus();
+}
+
+async function loadStatus() {
+  const s = await (await fetch('/api/status')).json();
+  const area = document.getElementById('statusArea');
+  if (!s.status) { area.textContent = 'まだポーリング結果がありません'; }
+  else {
+    const rows = s.status.results.map(r =>
+      `<tr><td>${r.name}</td><td class="${r.state}">${r.state}</td><td>${r.detail || ''}</td></tr>`).join('');
+    area.innerHTML = `<p class="note">最終確認: ${s.status.checked_at}</p>
+      <table><tr><th>チェック</th><th>状態</th><th>詳細</th></tr>${rows}</table>`;
+  }
+  const an = document.getElementById('anomalyArea');
+  an.innerHTML = s.anomalies.length
+    ? '<table>' + s.anomalies.map(a => `<tr><td>${a.time}</td><td>${a.name}</td><td>${a.detail}</td></tr>`).join('') + '</table>'
+    : '<p class="note">異常記録なし</p>';
+}
+
+async function saveConfig() {
+  const values = {};
+  document.querySelectorAll('#cfgForm input').forEach(i => values[i.name] = i.value);
+  const res = await (await fetch('/api/config', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({values})
+  })).json();
+  document.getElementById('saveMsg').textContent = res.saved ? '保存しました' : '失敗';
+  setTimeout(loadAll, 500);
+}
+
+loadAll();
+setInterval(loadStatus, 30000);
+</script>
+</body>
+</html>

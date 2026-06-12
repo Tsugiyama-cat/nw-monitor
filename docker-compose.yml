@@ -1,0 +1,31 @@
+services:
+  # Aruba Central MCP (stdio) を streamable HTTP で公開するゲートウェイ
+  # Mac側: claude mcp add --transport http central http://<このホスト>:8811/mcp
+  central-mcp:
+    build: ./central-mcp
+    env_file:
+      - path: ./config/runtime.env
+        required: false
+    ports:
+      - "8811:8811"
+    restart: unless-stopped
+
+  # LLMなしの定期ポーリング（閾値判定 → Slack通知 → 異常記録）
+  poller:
+    build: ./poller
+    volumes:
+      - ./config:/config
+      - ./data:/data
+      - ./checks.yml:/app/checks.yml:ro
+    restart: unless-stopped
+
+  # トークン入力・状態確認用のWeb GUI
+  # http://<このホスト>:8800
+  webui:
+    build: ./webui
+    volumes:
+      - ./config:/config
+      - ./data:/data
+    ports:
+      - "8800:8800"
+    restart: unless-stopped

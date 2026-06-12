@@ -1,0 +1,45 @@
+# 監視チェック定義。url/headers内の {KEY} は config/runtime.env の値で置換される。
+# プレースホルダが未設定のチェックは自動的にskipされる。
+#
+# 各チェックのフィールド:
+#   expect_status      : このHTTPステータス以外ならアラート (デフォルト 200)
+#   count_path         : レスポンスJSONのドット区切りパス (リストなら件数に変換)
+#   alert_if_count_gt  : count_pathの値がこれを超えたらアラート
+
+checks:
+  # Mist: APIトークンの有効性確認
+  - name: mist-auth
+    enabled: true
+    request:
+      method: GET
+      url: "{MIST_BASE_URL}/api/v1/self"
+      headers:
+        Authorization: "Token {MIST_API_TOKEN}"
+    expect_status: 200
+
+  # Mist: 直近1時間のアラーム件数
+  # 注意: エンドポイント/レスポンス形式は環境に合わせて要調整
+  # (https://api.mist.com/api/v1/docs の Alarms を参照)
+  - name: mist-alarms
+    enabled: true
+    request:
+      method: GET
+      url: "{MIST_BASE_URL}/api/v1/orgs/{MIST_ORG_ID}/alarms/search?duration=1h"
+      headers:
+        Authorization: "Token {MIST_API_TOKEN}"
+    expect_status: 200
+    count_path: total
+    alert_if_count_gt: 0
+
+  # Aruba Central (New Central): 接続確認
+  # 注意: New CentralのAPIエンドポイントに合わせてurlを調整すること。
+  # まずはGUIでCENTRAL_BASE_URLとCENTRAL_ACCESS_TOKENを設定し、
+  # enabled: true に変えて動作確認する。
+  - name: central-auth
+    enabled: false
+    request:
+      method: GET
+      url: "{CENTRAL_BASE_URL}/network-monitoring/v1alpha1/sites"
+      headers:
+        Authorization: "Bearer {CENTRAL_ACCESS_TOKEN}"
+    expect_status: 200
