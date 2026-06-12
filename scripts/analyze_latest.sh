@@ -36,11 +36,14 @@ ${STATUS}")
 echo "$RESULT"
 touch "$MARKER_FILE"
 
-# --notify 指定時はSlackにも送る
+# --notify 指定時はSlack (Web API chat.postMessage) にも送る
 if [ "${1:-}" = "--notify" ]; then
-  WEBHOOK=$(grep '^SLACK_WEBHOOK_URL=' config/runtime.env 2>/dev/null | cut -d= -f2-)
-  if [ -n "$WEBHOOK" ]; then
-    PAYLOAD=$(printf '%s' "$RESULT" | python3 -c 'import json,sys; print(json.dumps({"text": ":mag: Codex一次解析\n" + sys.stdin.read()}))')
-    curl -s -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$WEBHOOK" > /dev/null
+  TOKEN=$(grep '^SLACK_BOT_TOKEN=' config/runtime.env 2>/dev/null | cut -d= -f2-)
+  CHANNEL=$(grep '^SLACK_CHANNEL_ID=' config/runtime.env 2>/dev/null | cut -d= -f2-)
+  if [ -n "$TOKEN" ] && [ -n "$CHANNEL" ]; then
+    PAYLOAD=$(printf '%s' "$RESULT" | CH="$CHANNEL" python3 -c 'import json,os,sys; print(json.dumps({"channel": os.environ["CH"], "text": ":mag: Codex一次解析\n" + sys.stdin.read()}))')
+    curl -s -X POST https://slack.com/api/chat.postMessage \
+      -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+      -d "$PAYLOAD" > /dev/null
   fi
 fi

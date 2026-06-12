@@ -23,7 +23,8 @@ FIELDS = [
     ("CENTRAL_CLIENT_ID", "Central Client ID", False),
     ("CENTRAL_CLIENT_SECRET", "Central Client Secret", True),
     ("CENTRAL_ACCESS_TOKEN", "Central Access Token", True),
-    ("SLACK_WEBHOOK_URL", "Slack Webhook URL", True),
+    ("SLACK_BOT_TOKEN", "Slack Botトークン (xoxb-...)", True),
+    ("SLACK_CHANNEL_ID", "Slack チャンネルID (例: C0123456789)", False),
     ("POLL_INTERVAL_SEC", "ポーリング間隔(秒)", False),
 ]
 SECRET_KEYS = {k for k, _, secret in FIELDS if secret}
