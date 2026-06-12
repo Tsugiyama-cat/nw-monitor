@@ -23,7 +23,7 @@ Dockerホスト（例: TS-LABホスト）上で動作し、以下を提供する
 ## 前提
 
 - Docker / Docker Compose v2
-- （任意）Slack Incoming Webhook URL
+- （任意）Slack App のBotトークン（下記参照。フリープランで可）
 - （任意）ホストに [Codex CLI](https://github.com/openai/codex)（`npm i -g @openai/codex` → `codex login`）
 
 ## セットアップ
@@ -42,7 +42,21 @@ docker compose up -d --build
 | Mist APIトークン | Mist管理画面 → Organization → API Tokens（Orgトークン推奨） |
 | Mist Org ID | Mist管理画面のURL等から確認 |
 | Central Access Token | New Central → API Gateway でトークン発行 |
-| Slack Webhook URL | Slack App → Incoming Webhooks |
+| Slack Botトークン / チャンネルID | 下記「Slack通知の設定」参照 |
+
+### Slack通知の設定（任意・フリープランで可）
+
+レガシーIncoming Webhookではなく、現行推奨のSlack App + Web API
+（[chat.postMessage](https://docs.slack.dev/messaging/sending-and-scheduling-messages)）を使う。
+
+1. https://api.slack.com/apps → **Create New App** → From scratch
+2. **OAuth & Permissions** → Bot Token Scopes に `chat:write` を追加
+3. **Install to Workspace** でインストール → **Bot User OAuth Token**（`xoxb-...`）をコピー
+4. 通知先チャンネルでBotを招待: `/invite @<アプリ名>`
+5. チャンネルIDを確認（チャンネル名クリック→最下部に `C...` のID）
+6. GUIで Botトークン と チャンネルID を保存
+
+未設定でも監視は動く（通知なし、GUIと `data/anomalies.jsonl` への記録のみ）。
 
 > **反映タイミング**: poller と webui は保存後すぐ反映。**central-mcp のみ
 > `docker compose restart central-mcp` が必要**（起動時に環境変数を読むため）。

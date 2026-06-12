@@ -94,13 +94,27 @@ def run_check(check: dict, env: dict) -> dict:
 
 
 def notify_slack(env: dict, alerts: list):
-    url = env.get("SLACK_WEBHOOK_URL", "")
-    if not url or not alerts:
+    """Slack Web API (chat.postMessage) で通知する。
+
+    レガシーIncoming Webhookではなく、Slack App + Botトークン方式
+    (https://docs.slack.dev/messaging/sending-and-scheduling-messages) を使う。
+    """
+    token = env.get("SLACK_BOT_TOKEN", "")
+    channel = env.get("SLACK_CHANNEL_ID", "")
+    if not token or not channel or not alerts:
         return
     lines = [f"• *{a['name']}*: {a['detail']}" for a in alerts]
     text = ":rotating_light: NW監視アラート\n" + "\n".join(lines)
     try:
-        requests.post(url, json={"text": text}, timeout=10)
+        resp = requests.post(
+            "https://slack.com/api/chat.postMessage",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"channel": channel, "text": text},
+            timeout=10,
+        )
+        body = resp.json()
+        if not body.get("ok"):
+            print(f"Slack通知失敗: {body.get('error')}", flush=True)
     except requests.RequestException as e:
         print(f"Slack通知失敗: {e}", flush=True)
 
